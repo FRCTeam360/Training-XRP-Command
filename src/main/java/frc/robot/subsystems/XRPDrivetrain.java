@@ -4,9 +4,18 @@
 
 package frc.robot.subsystems;
 
+import java.util.function.DoubleSupplier;
+
 import edu.wpi.first.wpilibj.Encoder;
 import edu.wpi.first.wpilibj.drive.DifferentialDrive;
+import edu.wpi.first.wpilibj.shuffleboard.Shuffleboard;
+import edu.wpi.first.wpilibj.shuffleboard.ShuffleboardTab;
+import edu.wpi.first.wpilibj.xrp.XRPGyro;
 import edu.wpi.first.wpilibj.xrp.XRPMotor;
+import edu.wpi.first.wpilibj.xrp.XRPRangefinder;
+import edu.wpi.first.wpilibj.xrp.XRPReflectanceSensor;
+import edu.wpi.first.wpilibj2.command.Command;
+import edu.wpi.first.wpilibj2.command.Commands;
 import edu.wpi.first.wpilibj2.command.SubsystemBase;
 
 public class XRPDrivetrain extends SubsystemBase {
@@ -26,6 +35,12 @@ public class XRPDrivetrain extends SubsystemBase {
   private final Encoder m_leftEncoder = new Encoder(4, 5);
   private final Encoder m_rightEncoder = new Encoder(6, 7);
 
+  private final XRPGyro gyro = new XRPGyro();
+
+  private final XRPRangefinder rangeFinder = new XRPRangefinder();
+
+  private final XRPReflectanceSensor refSensor = new XRPReflectanceSensor();
+
   // Set up the differential drive controller
   private final DifferentialDrive m_diffDrive =
       new DifferentialDrive(m_leftMotor::set, m_rightMotor::set);
@@ -39,10 +54,31 @@ public class XRPDrivetrain extends SubsystemBase {
 
     // Invert right side since motor is flipped
     m_rightMotor.setInverted(true);
+    setupTab();
+  }
+
+  private ShuffleboardTab tab = Shuffleboard.getTab("Drivebase");
+
+  private void setupTab() {
+    tab.addDouble("Gyro: Pitch", gyro::getAngleX);
+    tab.addDouble("Gyro: Roll", gyro::getAngleY);
+    tab.addDouble("Gyro: Yaw", gyro::getAngleZ);
+
+    tab.addDouble("Range Finder: Distance Inches", rangeFinder::getDistanceInches);
+    
+    tab.addDouble("Reflectance Sensor: Left", refSensor::getLeftReflectanceValue);
+    tab.addDouble("Reflectance Sensor: Right", refSensor::getRightReflectanceValue);
   }
 
   public void arcadeDrive(double xaxisSpeed, double zaxisRotate) {
     m_diffDrive.arcadeDrive(xaxisSpeed, zaxisRotate);
+  }
+
+  public Command arcadeDriveCmd(DoubleSupplier xaxisSpeedSup, DoubleSupplier zaxisRotateSup) {
+    return this.runEnd(
+      () -> this.arcadeDrive(-xaxisSpeedSup.getAsDouble(), zaxisRotateSup.getAsDouble()),
+      () -> this.arcadeDrive(0.0, 0.0)
+    );
   }
 
   public void resetEncoders() {
